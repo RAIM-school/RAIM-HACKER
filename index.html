@@ -1,0 +1,352 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAIM Account Finder</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;background:#07111f;color:#edf6ff;
+  font-family:Arial,sans-serif
+}
+header{
+  background:#0c1d32;text-align:center;padding:24px;
+  border-bottom:2px solid #16c8ff
+}
+h1{color:#31d8ff;margin:0}
+header p,.small{color:#b7cce0;line-height:1.6}
+.container{max-width:1000px;width:92%;margin:24px auto}
+.panel{
+  background:#10233a;border:1px solid #244766;
+  border-radius:14px;padding:20px;margin-bottom:20px
+}
+h2{color:#31d8ff}
+input,select,button{
+  width:100%;padding:12px;margin:8px 0;
+  border-radius:8px;font-size:16px
+}
+input,select{
+  background:#071525;color:white;border:1px solid #345675
+}
+button{
+  background:#00a9dc;color:#061421;border:0;
+  font-weight:bold;cursor:pointer
+}
+button:hover{background:#54dcff}
+.grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:14px
+}
+.service{
+  background:#0a192a;border:1px solid #244766;
+  border-radius:10px;padding:15px;margin:10px 0;
+  overflow-wrap:anywhere
+}
+.service a{color:#47d7ff}
+.status{color:#a9e9c3;line-height:1.6}
+footer{text-align:center;padding:22px;color:#a9bfd3}
+</style>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://apis.google.com/js/api.js" async></script>
+</head>
+
+<body>
+<header>
+  <h1>🛰️ RAIM Account Finder</h1>
+  <p>Account management • Gmail • Google Chat • Security</p>
+</header>
+
+<main class="container">
+
+<section class="panel">
+  <h2>🔎 Account Service Directory</h2>
+  <p class="small">
+    Search the directory for official account websites.
+    An email address alone cannot reveal accounts or private information.
+  </p>
+  <input id="email" type="email" placeholder="Your email address (optional)">
+  <select id="category">
+    <option value="all">All services</option>
+    <option value="email">Email</option>
+    <option value="social">Social media</option>
+    <option value="messaging">Messaging</option>
+    <option value="gaming">Gaming</option>
+  </select>
+  <button onclick="searchServices()">Search Directory</button>
+  <p id="directoryStatus" class="small" aria-live="polite"></p>
+  <div id="services" class="grid"></div>
+</section>
+
+<section class="panel">
+  <h2>📧 My Gmail Messages</h2>
+  <p class="small">
+    Connect your own Google account using Google's authorization screen.
+    This demo requests read-only Gmail access and displays message metadata
+    and snippets. Only continue if you understand and approve the requested
+    permission.
+  </p>
+  <button onclick="connectGmail()">Sign in and Authorize Gmail</button>
+  <button onclick="loadGmailMessages()">Load My Latest Messages</button>
+  <button onclick="disconnectGmail()">Disconnect Google Account</button>
+  <p id="gmailStatus" class="status" aria-live="polite">Not connected.</p>
+  <div id="gmailMessages"></div>
+</section>
+
+<section class="panel">
+  <h2>💬 Google Chat</h2>
+  <p class="small">
+    Open Google Chat using your own account. This button does not read chat
+    messages; viewing chat data inside RAIM requires a separately configured
+    Google Chat API integration and authorization.
+  </p>
+  <button onclick="window.open('https://chat.google.com/','_blank','noopener,noreferrer')">
+    Open Google Chat
+  </button>
+</section>
+
+<section class="panel">
+  <h2>🛰️ Connection Status</h2>
+  <p id="networkStatus" class="status">Checking network status...</p>
+  <p class="small">
+    This website uses your device's internet connection. It cannot control
+    satellites or confirm that your internet connection is satellite-based.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>🔐 Security</h2>
+  <ul>
+    <li>Never enter your Google password directly into this website.</li>
+    <li>Approve access only on Google's official authorization screen.</li>
+    <li>This example requests read-only Gmail access.</li>
+    <li>Do not share access tokens or verification codes.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>RAIM Account Finder • Authorized access only</footer>
+
+<script>
+const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_OAUTH_CLIENT_ID";
+
+const services = [
+  {name:"Google",category:"email",url:"https://myaccount.google.com/",desc:"Manage Google account and security."},
+  {name:"Gmail",category:"email",url:"https://mail.google.com/",desc:"Open your Gmail inbox."},
+  {name:"Microsoft",category:"email",url:"https://account.microsoft.com/",desc:"Manage Microsoft account."},
+  {name:"Yahoo Mail",category:"email",url:"https://login.yahoo.com/",desc:"Open Yahoo account."},
+  {name:"Apple",category:"email",url:"https://account.apple.com/",desc:"Manage Apple Account."},
+  {name:"Instagram",category:"social",url:"https://www.instagram.com/",desc:"Open Instagram."},
+  {name:"Facebook",category:"social",url:"https://www.facebook.com/",desc:"Open Facebook."},
+  {name:"TikTok",category:"social",url:"https://www.tiktok.com/",desc:"Open TikTok."},
+  {name:"WhatsApp",category:"messaging",url:"https://www.whatsapp.com/",desc:"Open WhatsApp."},
+  {name:"Telegram",category:"messaging",url:"https://telegram.org/",desc:"Open Telegram."},
+  {name:"Google Chat",category:"messaging",url:"https://chat.google.com/",desc:"Open Google Chat."},
+  {name:"Discord",category:"messaging",url:"https://discord.com/",desc:"Open Discord."},
+  {name:"Steam",category:"gaming",url:"https://store.steampowered.com/login/",desc:"Manage Steam account."},
+  {name:"Epic Games",category:"gaming",url:"https://www.epicgames.com/account/",desc:"Manage Epic Games account."},
+  {name:"Xbox",category:"gaming",url:"https://account.xbox.com/",desc:"Manage Xbox account."},
+  {name:"PlayStation",category:"gaming",url:"https://www.playstation.com/",desc:"Open PlayStation."}
+];
+
+function renderServices(list){
+  const root=document.getElementById("services");
+  root.replaceChildren();
+
+  list.forEach(s=>{
+    const card=document.createElement("div");
+    card.className="service";
+
+    const title=document.createElement("h3");
+    title.textContent=s.name;
+
+    const desc=document.createElement("p");
+    desc.textContent=s.desc;
+
+    const link=document.createElement("a");
+    link.href=s.url;
+    link.target="_blank";
+    link.rel="noopener noreferrer";
+    link.textContent="Open Official Website ↗";
+
+    card.append(title,desc,link);
+    root.appendChild(card);
+  });
+}
+
+function searchServices(){
+  const email=document.getElementById("email");
+  if(email.value.trim()&&!email.checkValidity()){
+    document.getElementById("directoryStatus").textContent=
+      "Please enter a valid email address.";
+    return;
+  }
+
+  const category=document.getElementById("category").value;
+  const list=category==="all"?services:
+    services.filter(s=>s.category===category);
+
+  renderServices(list);
+  document.getElementById("directoryStatus").textContent=
+    list.length+" services displayed. This does not confirm that your email is registered with them.";
+}
+
+let tokenClient=null;
+let gmailToken=null;
+let gmailReady=false;
+
+function setGmailStatus(message){
+  document.getElementById("gmailStatus").textContent=message;
+}
+
+function initializeGmail(){
+  if(!window.google?.accounts?.oauth2||!window.gapi?.client){
+    setTimeout(initializeGmail,300);
+    return;
+  }
+
+  if(GOOGLE_CLIENT_ID==="YOUR_GOOGLE_OAUTH_CLIENT_ID"){
+    setGmailStatus("Setup required: add your Google OAuth client ID.");
+    return;
+  }
+
+  gapi.load("client",async()=>{
+    try{
+      await gapi.client.init({
+        discoveryDocs:[
+          "https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"
+        ]
+      });
+
+      tokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:GOOGLE_CLIENT_ID,
+        scope:"https://www.googleapis.com/auth/gmail.readonly",
+        callback:response=>{
+          if(response.error){
+            setGmailStatus("Google authorization failed.");
+            return;
+          }
+
+          gmailToken=response.access_token;
+          gapi.client.setToken({access_token:gmailToken});
+          gmailReady=true;
+          setGmailStatus("Gmail connected. You can load your messages.");
+        }
+      });
+
+      setGmailStatus("Ready. Sign in to authorize Gmail access.");
+    }catch(error){
+      console.error(error);
+      setGmailStatus("Could not initialize Gmail API. Check your setup.");
+    }
+  });
+}
+
+function connectGmail(){
+  if(!tokenClient){
+    setGmailStatus("Google services are loading or setup is incomplete.");
+    return;
+  }
+  tokenClient.requestAccessToken({prompt:"consent"});
+}
+
+async function loadGmailMessages(){
+  if(!gmailReady||!gmailToken){
+    setGmailStatus("Connect your own Google account first.");
+    return;
+  }
+
+  const output=document.getElementById("gmailMessages");
+  output.replaceChildren();
+  setGmailStatus("Loading messages...");
+
+  try{
+    const response=await gapi.client.gmail.users.messages.list({
+      userId:"me",
+      maxResults:10
+    });
+
+    const messages=response.result.messages||[];
+
+    if(messages.length===0){
+      setGmailStatus("No messages returned.");
+      return;
+    }
+
+    for(const message of messages){
+      const result=await gapi.client.gmail.users.messages.get({
+        userId:"me",
+        id:message.id,
+        format:"metadata",
+        metadataHeaders:["From","Subject","Date"]
+      });
+
+      const data=result.result;
+      const headers=data.payload?.headers||[];
+
+      function header(name){
+        return headers.find(h=>h.name.toLowerCase()===name.toLowerCase())
+          ?.value||"(not available)";
+      }
+
+      const card=document.createElement("article");
+      card.className="service";
+
+      for(const [label,value] of [
+        ["Subject",header("Subject")],
+        ["From",header("From")],
+        ["Date",header("Date")],
+        ["Preview",data.snippet||"(no preview)"]
+      ]){
+        const p=document.createElement("p");
+        p.textContent=label+": "+value;
+        card.appendChild(p);
+      }
+
+      output.appendChild(card);
+    }
+
+    setGmailStatus("Loaded up to 10 messages from your authorized account.");
+  }catch(error){
+    console.error(error);
+    setGmailStatus("Unable to load messages. Check API configuration and authorization.");
+  }
+}
+
+function disconnectGmail(){
+  if(gmailToken&&window.google?.accounts?.oauth2){
+    google.accounts.oauth2.revoke(gmailToken,()=>{});
+  }
+
+  gmailToken=null;
+  gmailReady=false;
+
+  if(window.gapi?.client){
+    gapi.client.setToken(null);
+  }
+
+  document.getElementById("gmailMessages").replaceChildren();
+  setGmailStatus("Disconnected.");
+}
+
+function updateNetworkStatus(){
+  document.getElementById("networkStatus").textContent=
+    navigator.onLine
+      ?"Your device reports an available network connection."
+      :"Your device reports that it is offline.";
+}
+
+window.addEventListener("online",updateNetworkStatus);
+window.addEventListener("offline",updateNetworkStatus);
+
+renderServices(services);
+updateNetworkStatus();
+initializeGmail();
+</script>
+</body>
+</html>
+```
